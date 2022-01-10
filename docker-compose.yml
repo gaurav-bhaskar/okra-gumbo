@@ -6,6 +6,8 @@ services:
       - docker/postgres/.env
     ports:
       - "5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
     restart: always
 
   pgadmin:
@@ -16,4 +18,10 @@ services:
       - docker/pgadmin/.env
     ports:
       - "5050:80"
+    volumes:
+      - pgadmin4:/var/lib/pgadmin
     restart: always
+
+volumes:
+  postgres:
+  pgadmin4:
