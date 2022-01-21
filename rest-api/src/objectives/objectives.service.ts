@@ -1,11 +1,15 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
 import { CreateObjectiveDto } from './data-transfer-objects/create-objective.dto';
-import { ObjectiveType } from './objective-type';
+import { ObjectiveType, validateParentObjectiveType, validateSquad360ApiEndpoint } from './objective-type';
 import { Objective } from './objective.entity';
 import { UpdateObjectiveDto } from './data-transfer-objects/update-objective.dto';
 
+/**
+ * All of the business logic for handling Objectives will be done in this class.
+ * This is to ensure that the controller's job is strictly for receiving HTTP requests
+ */
 @Injectable()
 export class ObjectivesService {
   constructor(
@@ -31,10 +35,15 @@ export class ObjectivesService {
   /**
    * Create a single new Objective entry in the database given the metadata passed in
    * @param createObjectiveDto The Objective metadata
+   * @throws BadRequestException invalid parent objective or invalid Squad360 taxonomy item endpoint
    * @returns The Objective entry that is stored in the database wrapped in a Promise
    */
   async createObjective(createObjectiveDto: CreateObjectiveDto): Promise<Objective> {
     const objective: Objective = await this.repository.create(createObjectiveDto);
+
+    validateParentObjectiveType(objective.type, objective.parent?.type);
+    validateSquad360ApiEndpoint(objective.type, objective.squad360ApiEndpoint);
+
     return this.repository.save(objective);
   }
 
@@ -43,6 +52,7 @@ export class ObjectivesService {
    * @param id                  The database ID of the already existing Objective entry
    * @param updateObjectiveDto  The data to update the existing Objective entry with
    * @throws NotFoundException  The Objective entry doesn't exist in the database
+   * @throws BadRequestException Invalid parent objective or invalid Squad360 taxonomy item endpoint
    * @returns The Objective entry that is stored in the database with the updated information wrapped in a Promise
    */
   async updateObjective(id: number, updateObjectiveDto: UpdateObjectiveDto): Promise<Objective> {
@@ -57,16 +67,19 @@ export class ObjectivesService {
       throw new NotFoundException(`Objective ${id} does not exist`);
     }
 
+    validateParentObjectiveType(objective.type, objective.parent?.type);
+    validateSquad360ApiEndpoint(objective.type, objective.squad360ApiEndpoint);
+
     return this.repository.save(objective);
   }
 
   /**
-   * Delete an arbitrary number of Objective entries from the database.
+   * Delete a single Objective entry from the database.
    * This method does not check if the Objective entry already exists in the database.
-   * @param objectiveIds The database IDs of all Objective entries to delete
+   * @param objectiveId The database ID of the Objective entry to delete
    * @returns The result object returned from DeleteQueryBuilder wrapped in a Promise
    */
-  deleteObjectives(objectiveIds: Array<number>): Promise<DeleteResult> {
-    return this.repository.delete(objectiveIds);
+  deleteObjective(objectiveId: number): Promise<DeleteResult> {
+    return this.repository.delete(objectiveId);
   }
 }
